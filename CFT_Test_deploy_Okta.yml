@@ -1,0 +1,516 @@
+# Company Foundational CloudFormation Template
+AWSTemplateFormatVersion: 2010-09-09
+Description: OKTA Servers deployment template
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Instance Configuration"
+        Parameters:
+          - instanceName1
+          - instanceName2
+          - instanceName3
+          - instanceName4
+          - instanceType
+          - KeyName
+          - instanceAMI
+          - InstanceProfile
+      -
+        Label:
+          default: "Instance Tags"
+        Parameters:
+          - instanceAppCode
+          - instanceAppName
+          - instanceAppRole
+          - instanceDescription
+          - instanceEnvironment
+          - instanceBusinessUnit
+          - instanceAppCriticality
+          - instanceContact
+          - instanceBackup
+          - instanceBackupHour
+          - instanceMonitoring
+          - instanceStart
+          - instanceStop
+          - dataClassification
+      -
+        Label:
+          default: "Network Configuration"
+        Parameters:
+          - SubnetID1
+          - SubnetID2
+          - SubnetID3
+          - SecurityGroups
+          - VPCId
+# Custom parameters
+Parameters:
+  KeyName:
+    Description: "Name of existing EC2 keypair, required for access to the server after creation."
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "usa2020-West-2-Linux"
+  SubnetID1:
+    Description: "Name of existing subnets within the VPC"
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-2016d87d"
+  SubnetID2:
+    Description: "Name of existing subnets within the VPC"
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-23b9a068"
+  SubnetID3:
+    Description: "Name of existing subnets within the VPC"
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-38216013"
+  instanceAMI:
+    Description: "AMI ID for Instance creation"
+    Type: AWS::EC2::Image::Id
+    Default: ami-00d1abd98ae1c92e2
+  instanceName1:
+    Description: "Name of the instance (host name)"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: vstae1proktw01
+  instanceName2:
+    Description: "Name of the instance (host name)"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: vstae1proktw02
+  instanceName3:
+    Description: "Name of the instance (host name)"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: vstae1proktw03
+  instanceName4:
+    Description: "Name of the instance (host name)"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: vstae1proktw04
+  InstanceProfile:
+    Description: "IAM Instance Profile"
+    Type: String
+    Default: ec2-admin
+  instanceAppCode:
+    Description: "3 letter App code (Lower case)"
+    Type: String
+    AllowedPattern: ^[a-z0-9]*$
+    Default: okt
+  instanceAppName:
+    Description: "Name of the App"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9 ]*$
+    Default: Okta
+  instanceAppCriticality:
+    Description: "App criticality (mission_critical, business_critical, business_operations, administrative)"
+    Type: String
+    AllowedValues:
+      - mission_critical
+      - business_critical
+      - business_operations
+      - administrative
+    Default: "mission_critical"
+  instanceAppRole:
+    Description: "App Role (web, app, db, fileshare, batch, report)"
+    Type: String
+    AllowedValues:
+      - web
+      - app
+      - db
+      - fileshare
+      - batch
+      - report
+    Default: app
+  instanceBusinessUnit:
+    Description: "App Business Unit (corporate, nuclear, fossil, wholesale, retail, technology_services, 4change)"
+    Type: String
+    AllowedValues:
+      - corporate
+      - nuclear
+      - fossil
+      - wholesale
+      - retail
+      - technology_services
+      - 4change
+    Default: "technology_services"
+  instanceContact:
+    Description: "Email of App owner"
+    Type: String
+    Default: "raja@Companyenergy.com"
+  instanceDescription:
+    Description: "Description of the instance / App"
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9 ]*$
+    Default: "Okta for Multi Factor Authentication"
+  instanceEnvironment:
+    Description: "Instance / App environment (production, development, dr, non_production, pre_production, qa, test, training, uat)"
+    Type: String
+    AllowedValues:
+      - production
+      - development
+      - dr
+      - non_production
+      - pre_production
+      - qa
+      - test
+      - training
+      - uat
+    Default: production
+  instanceBackup:
+    Description: "Backup enabled for instance (true or false)"
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+  instanceMonitoring:
+    Description: "Monitoring enabled for instance (true or false). REQUIRED FOR PRODUCTION ENVRIONMENT"
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
+  instanceBackupHour:
+    Description: "Backup hour (for 8:00pm backup, hour would be: 20)"
+    Type: String
+    AllowedPattern: ^[0-9]|[01]?[0-9]|2[0-3]*$
+    Default: "20"
+  instanceType:
+    Description: "Instance Type (e.g. m4.large)"
+    Type: String
+    AllowedPattern: ^[a-z0-9.]*$
+    Default: t2.micro
+  instanceStart:
+    Description: "Start time of instance, in CRON format. (example for 8am Monday-Friday: 0 8 * * 1-5)"
+    Type: String
+    AllowedPattern: ^[0-9* ]*$
+  instanceStop:
+    Description: "Stop time of instance, in CRON format. (example for 5pm Monday-Friday: 0 17 * * 1-5)"
+    Type: String
+    AllowedPattern: ^[0-9* ]*$
+  dataClassification:
+    Description: "Data classification (public, internal_use_only, confidential, restricted)"
+    Type: String
+    AllowedValues:
+      - public
+      - internal_use_only
+      - confidential
+      - restricted
+    Default: confidential
+  VpcId:
+    Description: "The VPC you are deploying the instance in"
+    Type: String
+    Default: vpc-2653315e
+Resources:
+  Securitygroup1:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: 'Okta.Prod_SG01'
+      GroupDescription: Enable Okta access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/8
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5985
+          ToPort: 5985
+          CidrIp: 192.168.0.0/16
+        - IpProtocol: tcp
+          FromPort: 59719
+          ToPort: 59719
+          CidrIp: 172.27.119.154/32
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          Description: Allow all outbound traffic
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
+  # Standard Instance
+  StandardInstance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref instanceAMI
+      InstanceType: !Ref instanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !GetAtt Securitygroup1.GroupId
+      SubnetId: !Ref SubnetID1
+      UserData:
+        Fn::Base64:
+          !Sub |
+              # example Linux:
+              #!/bin/bash -ex
+              # sudo cd /code/dir && ./script.sh
+              # example Windows:
+              # cd C:/code/folder && ./script.ps1
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeType: "gp2"
+            VolumeSize: 10
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref instanceName1
+        -
+          Key: "business_unit"
+          Value: !Ref instanceBusinessUnit
+        -
+          Key: "description"
+          Value: !Ref instanceDescription
+        -
+          Key: "application_code"
+          Value: !Ref instanceAppCode
+        -
+          Key: "application_criticality"
+          Value: !Ref instanceAppCriticality
+        -
+          Key: "application_role"
+          Value: !Ref instanceAppRole
+        -
+          Key: "application_name"
+          Value: !Ref instanceAppName
+        -
+          Key: "environment"
+          Value: !Ref instanceEnvironment
+        -
+          Key: "backup"
+          Value: !Ref instanceBackup
+        -
+          Key: "backup_hour"
+          Value: !Ref instanceBackupHour
+        -
+          Key: "contact"
+          Value: !Ref instanceContact
+        -
+          Key: "monitoring"
+          Value: !Ref instanceMonitoring
+        -
+          Key: "start"
+          Value: !Ref instanceStart
+        -
+          Key: "stop"
+          Value: !Ref instanceStop
+        -
+          Key: "data_classification"
+          Value: !Ref dataClassification
+  StandardInstance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref instanceAMI
+      InstanceType: !Ref instanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !GetAtt Securitygroup1.GroupId
+      SubnetId: !Ref SubnetID2
+      UserData:
+        Fn::Base64:
+          !Sub |
+              # example Linux:
+              #!/bin/bash -ex
+              # sudo cd /code/dir && ./script.sh
+              # example Windows:
+              # cd C:/code/folder && ./script.ps1
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeType: "gp2"
+            VolumeSize: 10
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref instanceName2
+        -
+          Key: "business_unit"
+          Value: !Ref instanceBusinessUnit
+        -
+          Key: "description"
+          Value: !Ref instanceDescription
+        -
+          Key: "application_code"
+          Value: !Ref instanceAppCode
+        -
+          Key: "application_criticality"
+          Value: !Ref instanceAppCriticality
+        -
+          Key: "application_role"
+          Value: !Ref instanceAppRole
+        -
+          Key: "application_name"
+          Value: !Ref instanceAppName
+        -
+          Key: "environment"
+          Value: !Ref instanceEnvironment
+        -
+          Key: "backup"
+          Value: !Ref instanceBackup
+        -
+          Key: "backup_hour"
+          Value: !Ref instanceBackupHour
+        -
+          Key: "contact"
+          Value: !Ref instanceContact
+        -
+          Key: "monitoring"
+          Value: !Ref instanceMonitoring
+        -
+          Key: "start"
+          Value: !Ref instanceStart
+        -
+          Key: "stop"
+          Value: !Ref instanceStop
+        -
+          Key: "data_classification"
+          Value: !Ref dataClassification
+  StandardInstance3:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref instanceAMI
+      InstanceType: !Ref instanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !GetAtt Securitygroup1.GroupId
+      SubnetId: !Ref SubnetID2
+      UserData:
+        Fn::Base64:
+          !Sub |
+              # example Linux:
+              #!/bin/bash -ex
+              # sudo cd /code/dir && ./script.sh
+              # example Windows:
+              # cd C:/code/folder && ./script.ps1
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeType: "gp2"
+            VolumeSize: 10
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref instanceName3
+        -
+          Key: "business_unit"
+          Value: !Ref instanceBusinessUnit
+        -
+          Key: "description"
+          Value: !Ref instanceDescription
+        -
+          Key: "application_code"
+          Value: !Ref instanceAppCode
+        -
+          Key: "application_criticality"
+          Value: !Ref instanceAppCriticality
+        -
+          Key: "application_role"
+          Value: !Ref instanceAppRole
+        -
+          Key: "application_name"
+          Value: !Ref instanceAppName
+        -
+          Key: "environment"
+          Value: !Ref instanceEnvironment
+        -
+          Key: "backup"
+          Value: !Ref instanceBackup
+        -
+          Key: "backup_hour"
+          Value: !Ref instanceBackupHour
+        -
+          Key: "contact"
+          Value: !Ref instanceContact
+        -
+          Key: "monitoring"
+          Value: !Ref instanceMonitoring
+        -
+          Key: "start"
+          Value: !Ref instanceStart
+        -
+          Key: "stop"
+          Value: !Ref instanceStop
+        -
+          Key: "data_classification"
+          Value: !Ref dataClassification
+  StandardInstance4:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref instanceAMI
+      InstanceType: !Ref instanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !GetAtt Securitygroup1.GroupId
+      SubnetId: !Ref SubnetID2
+      UserData:
+        Fn::Base64:
+          !Sub |
+              # example Linux:
+              #!/bin/bash -ex
+              # sudo cd /code/dir && ./script.sh
+              # example Windows:
+              # cd C:/code/folder && ./script.ps1
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1"
+          Ebs:
+            VolumeType: "gp2"
+            VolumeSize: 10
+      Tags:
+        -
+          Key: "Name"
+          Value: !Ref instanceName4
+        -
+          Key: "business_unit"
+          Value: !Ref instanceBusinessUnit
+        -
+          Key: "description"
+          Value: !Ref instanceDescription
+        -
+          Key: "application_code"
+          Value: !Ref instanceAppCode
+        -
+          Key: "application_criticality"
+          Value: !Ref instanceAppCriticality
+        -
+          Key: "application_role"
+          Value: !Ref instanceAppRole
+        -
+          Key: "application_name"
+          Value: !Ref instanceAppName
+        -
+          Key: "environment"
+          Value: !Ref instanceEnvironment
+        -
+          Key: "backup"
+          Value: !Ref instanceBackup
+        -
+          Key: "backup_hour"
+          Value: !Ref instanceBackupHour
+        -
+          Key: "contact"
+          Value: !Ref instanceContact
+        -
+          Key: "monitoring"
+          Value: !Ref instanceMonitoring
+        -
+          Key: "start"
+          Value: !Ref instanceStart
+        -
+          Key: "stop"
+          Value: !Ref instanceStop
+        -
+          Key: "data_classification"
+          Value: !Ref dataClassification
+Outputs:
+  instanceID:
+    Description: "InstanceID of newly deployed Okta Instance - 1"
+    Value: !Ref StandardInstance1
+    Description: "InstanceID of newly deployed Okta Instance - 2"
+    Value: !Ref StandardInstance2
+    Description: "InstanceID of newly deployed Okta Instance - 3"
+    Value: !Ref StandardInstance3
+    Description: "InstanceID of newly deployed Okta Instance - 4"
+    Value: !Ref StandardInstance4
