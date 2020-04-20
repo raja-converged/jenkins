@@ -1,6 +1,6 @@
 # Company Foundational CloudFormation Template
 AWSTemplateFormatVersion: 2010-09-09
-Description: OKTA Servers deployment template
+Description: OKTA Servers deployment template1
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
